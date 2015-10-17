@@ -1,5 +1,6 @@
 import socket
 import json
+import argparse
 
 class JSONrequest:
     def __init__(self, type):
@@ -16,16 +17,13 @@ def Register(conn):
     request = JSONrequest("READY")
     conn.send(request.compile().encode("UTF-8"))
 
-def StartServer(port):
-    sock = socket.socket()
-    sock.bind(("", port))
-    sock.listen(1)
-    conn, address = sock.accept()
-    Register(conn)
-
 
 def main():
-    StartServer(8000)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-ip', '--address' type=str, default='localhost')
+    parser.add_argument('-p', '--port', type=int, default=8888)
+    address =  parser.parse_args().address
+    port = parser.parse_args().port
 
 
 if __name__ = "__main__":
