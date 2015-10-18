@@ -1,0 +1,11 @@
+ERROR:tornado.application:Uncaught exception
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.5/lib/python3.5/site-packages/tornado/http1connection.py", line 238, in _read_message
+    delegate.finish()
+  File "/Library/Frameworks/Python.framework/Versions/3.5/lib/python3.5/site-packages/tornado/httpserver.py", line 290, in finish
+    self.delegate.finish()
+  File "/Library/Frameworks/Python.framework/Versions/3.5/lib/python3.5/site-packages/tornado/web.py", line 1984, in finish
+    self.execute()
+  File "/Library/Frameworks/Python.framework/Versions/3.5/lib/python3.5/site-packages/tornado/web.py", line 2004, in execute
+    **self.handler_kwargs)
+TypeError: __init__() got multiple values for argument 'config'

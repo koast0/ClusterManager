@@ -5,26 +5,44 @@ import threading
 import queue
 from tornado import httpserver
 import tornado.web
-import tornado.websocket
 import tornado.ioloop
 import tornado.web
 from datetime import datetime
 from jsonhandler import JsonHandler
+
+
 class Node:
+
     def __init__(self, hostname, address, process):
         self.hostname = hostname
         self.address = address
         self.process = process
-        self.status = 0;
-        self.last_check_in = datetime.max;
-class IndexHandler(JsonHandler):
-    def get(self, config):
-        name = self.request.arguments['name']
-        status = self.request.arguments['status']
+        self.status = 0
+        self.last_check_in = datetime.max
+
+
+class IndexHandler(tornado.web.RequestHandler):
+    def __init__(self, config):
+        self.config=config
+
+    def post(self):
+        print (121)
+        if self.request.body:
+            try:
+                json_data = json.loads(self.request.body)
+                self.request.arguments.update(json_data)
+            except:
+                pass
+        self.response = dict()
+        try:
+            name = self.request.arguments['name']
+            status = self.request.arguments['status']
+        except:
+            return
         if (status == "READY"):
-            for i in config:
-                if (i.hostname == name and i.address == 
-                    self.client_address[0]):
+            for i in self.config:
+                if (i.hostname == name and i.address ==
+                        self.client_address[0]):
                     self.response['task'] = i.process
             self.write_json()
         if (status == "FAIL"):
@@ -32,18 +50,22 @@ class IndexHandler(JsonHandler):
             f.write("Process on " + name + " failed\n")
             f.close()
         if (status == "OK"):
-            for i in config:
-                if (i.hostname == name and i.address == 
-                    self.client_address[0]):
+            for i in self.config:
+                if (i.hostname == name and i.address ==
+                        self.client_address[0]):
                     i.last_check_in = datetime.now().time()
+        output = json.dumps(self.response)
+        self.write(output)
+
 
 
 class Application(tornado.web.Application):
+
     def __init__(self, config):
         self.queue = queue.Queue()
         self.config = config
         handlers = [
-            (r"/", IndexHandler, config),
+            (r"/", IndexHandler, dict(config = self.config)),
         ]
         tornado.web.Application.__init__(self, handlers)
 
@@ -60,11 +82,13 @@ def GetConfigData(nodes):
         print("Wrong config file")
         exit(1)
 
+
 def StartTornado(port, config):
     application = Application(config)
     server = tornado.httpserver.HTTPServer(application)
     server.listen(port)
     tornado.ioloop.IOLoop.instance().start()
+
 
 def main():
     config = []
