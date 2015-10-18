@@ -6,11 +6,9 @@
 python3 master.py -c nodes.txt
 
 ```
-### Agent:
- ###```
+### Agent: ###
+```
 #!bash
 python3 agent.py
 
 ```
-
-Нужно requests, tornado
