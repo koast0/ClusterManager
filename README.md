@@ -1,14 +1,13 @@
 # ClusterManager
-#
- Для тестового запуска
-Master:
+# Для тестового запуска
+### Master: ###
 ```
 #!bash
 python3 master.py -c nodes.txt
 
 ```
-Agent:
-```
+### Agent:
+ ###```
 #!bash
 python3 agent.py
 
