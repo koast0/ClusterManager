@@ -2,13 +2,13 @@
 #
  Для тестового запуска
 Master:
-#!bash
-
 ```
+#!bash
 python3 master.py -c nodes.txt
 
 ```
 Agent:
+```
 #!bash
 
 ```
