@@ -3,14 +3,16 @@
  #```
 Master:
 #!bash
-python3 master.py -c nodes.txt
 
 ```
+python3 master.py -c nodes.txt
+
 Agent:
 
 ```
 #!bash
-python3 agent.py
 
 ```
+python3 agent.py
+
 Нужно requests, tornado
