@@ -43,7 +43,7 @@ def StartProc(args, working_on):
                             universal_newlines=True)
 
     working_on.append(proc)
-def DoAction(action):
+def DoAction(action, processes):
     if action["action"] = "wait":
         return 0
     if action["action"] = "exec":
@@ -58,6 +58,7 @@ def main():
     address = ''
     name = ''
     address, port, name = ParceInput(address, port, name)
+    processes = []
     while True:
         action = Register(address, port, name)
         DoAction(action)
