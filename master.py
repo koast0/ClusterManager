@@ -9,7 +9,7 @@ import uuid
 import tornado.ioloop
 import tornado.web
 import logging
-import datetime
+from datetime import datetime
 from SafeShutdown import MakeSaflyShutdown
 
 
@@ -24,11 +24,10 @@ class Node:
 
 class IndexHandler(tornado.web.RequestHandler):
 
-    def initialize(self, config):
+    def initialize(self, config, nodes):
         self.config = config
-
+        self.nodes = nodes
     def post(self):
-        # print(self.request.body.decode("utf-8"))
         if self.request.body:
             try:
                 json_data = json.loads(self.request.body.decode("utf-8"))
@@ -40,6 +39,7 @@ class IndexHandler(tornado.web.RequestHandler):
         try:
             name = self.request.arguments['name']
             status = self.request.arguments['status']
+            self.nodes[name] = datetime.now()
         except:
             logging.warning("Some nessesary json object are not available")
             return
@@ -73,11 +73,12 @@ class IndexHandler(tornado.web.RequestHandler):
 
 class Application(tornado.web.Application):
 
-    def __init__(self, config):
+    def __init__(self, config, nodes):
         self.queue = queue.Queue()
         self.config = config
+        self.nodes = nodes
         handlers = [
-            (r"/", IndexHandler, dict(config=self.config)),
+            (r"/", IndexHandler, dict(config=self.config, nodes=self.nodes)),
         ]
         tornado.web.Application.__init__(self, handlers)
 
@@ -95,8 +96,8 @@ def GetConfigData(nodes):
         exit(1)
 
 
-def StartTornado(port, config):
-    application = Application(config)
+def StartTornado(port, config, nodes):
+    application = Application(config, nodes)
     server = tornado.httpserver.HTTPServer(application)
     server.listen(port)
     MakeSaflyShutdown(server)
@@ -107,8 +108,9 @@ def StartTornado(port, config):
 def main():
     logging.basicConfig(filename='master.log', level=logging.INFO)
     config = []
+    nodes = dict()
     GetConfigData(config)
-    StartTornado(8000, config)
+    StartTornado(8000, config, nodes)
 
 if __name__ == "__main__":
     main()
