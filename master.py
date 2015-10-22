@@ -15,9 +15,8 @@ from SafeShutdown import MakeSaflyShutdown
 
 class Node:
 
-    def __init__(self, hostname, address, process):
+    def __init__(self, hostname, process):
         self.hostname = hostname
-        self.address = address
         self.process = process
         self.status = 0
         self.id = uuid.uuid4()
@@ -90,7 +89,7 @@ def GetConfigData(nodes):
     try:
         config_data = open(config_file).readlines()
         for i in config_data:
-            nodes.append(Node(i.split()[0], i.split()[1], i.split()[2:]))
+            nodes.append(Node(i.split()[0], i.split()[1:]))
     except:
         logging.warning("Wrong config file")
         exit(1)
