@@ -1,2 +1,2 @@
 Node0 127.0.0.1 vim -m 3000
-Node0 127.0.0.1 vi  -2121 22
+Node0 127.0.0.1 dd if=/dev/random bs=128 count=1
