@@ -1,5 +1,22 @@
 # ClusterManager
 ## Запуск ##
+
+### Необходимо для запуска ###
+
+```
+#!bash
+
+# tornado
+pip3 install tornado
+
+# requests
+pip3 install requests
+
+
+```
+
+
+
 ### Master: ###
 ```
 #!bash
