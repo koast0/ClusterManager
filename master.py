@@ -21,29 +21,18 @@ class Node:
         self.status = 0
         self.id = uuid.uuid4()
 
-
-class IndexHandler(tornado.web.RequestHandler):
-
-    def initialize(self, config, nodes):
+class IndexPostAnswer:
+    def __init__(self, body, config, nodes):
+        self.body = body
+        self.arguments = dict()
+        self.response = dict()
         self.config = config
         self.nodes = nodes
-    def post(self):
-        if self.request.body:
-            try:
-                json_data = json.loads(self.request.body.decode("utf-8"))
-                self.request.arguments.update(json_data)
-            except:
-                logging.warning("failed with parcing json")
-                return
-        self.response = dict()
-        try:
-            name = self.request.arguments['name']
-            status = self.request.arguments['status']
-            self.nodes[name] = datetime.now()
-        except:
-            logging.warning("Some nessesary json object are not available")
-            return
-        if (status == "READY"):
+        self.output = ''
+
+    def Answerer(self):
+
+        def AnswerReady(self):
             for i in self.config:
                 if (i.hostname == name and i.status == 0):
                     if not ('task' in self.response):
@@ -56,7 +45,7 @@ class IndexHandler(tornado.web.RequestHandler):
             if not ('task' in self.response):
                 self.response['action'] = "wait"
 
-        if (status == "FAIL" or status == "UNABLE_TO_LAUNCH"):
+        def AnswerFail(self):
             try:
                 proc_id = self.request.arguments['proc_id']
             except:
@@ -64,11 +53,52 @@ class IndexHandler(tornado.web.RequestHandler):
                 return
             self.response['action'] = "wait"
             logging.info("Process " + proc_id + " on " + name + " failed\n")
-        if (status == "OK"):
+
+        def AnswerOk(self):
             self.response['action'] = "wait"
             logging.info("Node " + name + " checked out")
-        output = json.dumps(self.response)
+    
+
+        print(self.body)
+        if self.body:
+            try:
+                json_data = json.loads(self.body.decode("utf-8"))
+                self.arguments.update(json_data)
+            except:
+                logging.warning("failed with parcing json")
+                return
+        try:
+            name = self.arguments['name']
+            status = self.arguments['status']
+            self.nodes[name] = datetime.now()
+        except:
+            logging.warning("Some nessesary json object are not available")
+            return
+
+        if (status == "READY"):
+            AnswerReady(self)
+
+        if (status == "FAIL" or status == "UNABLE_TO_LAUNCH"):
+            AnswerFail(self)
+
+        if (status == "OK"):
+            AnswerOk(self)
+
+        self.output = json.dumps(self.response)
+
+    
+
+class IndexHandler(tornado.web.RequestHandler):
+
+    def initialize(self, config, nodes):
+        self.config = config
+        self.nodes = nodes
+    def post(self):
+        output_class = IndexPostAnswer(self.request.body, self.config, self.nodes)
+        output_class.Answerer()
+        output = output_class.output
         self.finish(output)
+
 
 
 class Application(tornado.web.Application):

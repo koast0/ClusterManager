@@ -1,2 +1,2 @@
-Node0 vim -m 3000
-Node0 dd if=/dev/random bs=128 count=1
+Node0 vim
+Node1 vim
