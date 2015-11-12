@@ -9,8 +9,8 @@ import uuid
 import tornado.ioloop
 import tornado.web
 import logging
-from datetime import datetime
 from SafeShutdown import MakeSaflyShutdown
+import DatabaseLogic as db
 
 
 class Node:
@@ -21,7 +21,9 @@ class Node:
         self.status = 0
         self.id = uuid.uuid4()
 
+
 class IndexPostAnswer:
+
     def __init__(self, body, config, nodes):
         self.body = body
         self.arguments = dict()
@@ -41,23 +43,24 @@ class IndexPostAnswer:
                         self.response['task'].append((i.process, str(i.id)))
                     self.response['action'] = "exec"
                     logging.info("task " + str(i.id) + "started on " + name)
+                    db.ProcUpdate(name, "RUNNING", str(i.id))
                     i.status = 1
             if not ('task' in self.response):
                 self.response['action'] = "wait"
 
         def AnswerFail(self):
             try:
-                proc_id = self.request.arguments['proc_id']
+                proc_id = self.arguments['proc_id']
             except:
                 logging.warning("Some nessesary json object are not available")
                 return
+            db.ProcUpdate(name, "FAIL", proc_id)
             self.response['action'] = "wait"
             logging.info("Process " + proc_id + " on " + name + " failed\n")
 
         def AnswerOk(self):
             self.response['action'] = "wait"
             logging.info("Node " + name + " checked out")
-    
 
         print(self.body)
         if self.body:
@@ -70,10 +73,11 @@ class IndexPostAnswer:
         try:
             name = self.arguments['name']
             status = self.arguments['status']
-            self.nodes[name] = datetime.now()
         except:
             logging.warning("Some nessesary json object are not available")
             return
+
+        db.NodeUpdate(name)
 
         if (status == "READY"):
             AnswerReady(self)
@@ -86,19 +90,19 @@ class IndexPostAnswer:
 
         self.output = json.dumps(self.response)
 
-    
 
 class IndexHandler(tornado.web.RequestHandler):
 
     def initialize(self, config, nodes):
         self.config = config
         self.nodes = nodes
+
     def post(self):
-        output_class = IndexPostAnswer(self.request.body, self.config, self.nodes)
+        output_class = IndexPostAnswer(
+            self.request.body, self.config, self.nodes)
         output_class.Answerer()
         output = output_class.output
         self.finish(output)
-
 
 
 class Application(tornado.web.Application):
@@ -134,9 +138,9 @@ def StartTornado(port, config, nodes):
     tornado.ioloop.IOLoop.instance().start()
 
 
-
 def main():
     logging.basicConfig(filename='master.log', level=logging.INFO)
+    db.CreateDB()
     config = []
     nodes = dict()
     GetConfigData(config)

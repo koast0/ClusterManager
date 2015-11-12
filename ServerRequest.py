@@ -14,10 +14,9 @@ class JSONrequest:
 
 def RequestToServer(server_data, json_data):
     ip = server_data.ip
-    port = server_data.port
     name = server_data.name
     headers = {"Accept": "application/json"}
-    server_result = requests.post(ip+':'+str(port)+'/', data=json_data.compile(),
+    server_result = requests.post(ip, data=json_data.compile(),
                                   headers=headers) 
     return json.loads(server_result.content.decode("utf-8"))
 

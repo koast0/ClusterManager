@@ -6,6 +6,7 @@ from random import random
 import threading
 import ServerRequest
 import logging
+from urllib.parse import urlparse, urlunparse
 
 
 def RandomTimeout(time):
@@ -15,15 +16,13 @@ def RandomTimeout(time):
 
 def ParceInput():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-ip', "--address", type=str, default='localhost')
-    parser.add_argument('-p', "--port", type=int, default=8000)
+    parser.add_argument('-ip', "--address", type=str, default='http://localhost:8000')
     parser.add_argument('-n', "--name", type=str, default='Node0')
     address = parser.parse_args().address
-    if address[0:7] != "http://":
-        address = "http://" + address
-    port = parser.parse_args().port
+    url = urlparse(address, scheme = 'http')
+    address = urlunparse(url)
     name = parser.parse_args().name
-    return (address, port, name)
+    return (address, name)
 
 
 class ProcessWorker(threading.Thread):
@@ -44,7 +43,7 @@ class ProcessWorker(threading.Thread):
             ServerRequest.FailReport(self.args[1], self.global_data)
             time.sleep(wait)
             wait *= 2
-            if (wait == 128):
+            if (wait == 32):
                 ServerRequest.LastReport(self.args[1], self.global_data)
                 logging.warning("Process " + self.args[1] + " is unable to be launched on this Node")
                 finish()
@@ -81,16 +80,15 @@ def DoAction(action, processes, global_data):
 
 class ServerData:
 
-    def __init__(self, ip, port, name):
+    def __init__(self, ip, name):
         self.ip = ip
-        self.port = port
         self.name = name
 
 
 def main():
     logging.basicConfig(filename='agent.log', level=logging.INFO)
-    address, port, name = ParceInput()
-    server_data = ServerData(address, port, name)
+    address, name = ParceInput()
+    server_data = ServerData(address, name)
     processes = dict()
     action = ServerRequest.Register(server_data)
     while True:
