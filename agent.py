@@ -27,39 +27,40 @@ def ParceInput():
 
 class ProcessWorker(threading.Thread):
 
-    def __init__(self, args, processes, global_data):
+    def __init__(self, args, global_data):
         threading.Thread.__init__(self)
         self.args = args
-        self.processes = processes
         self.global_data = global_data
         self.stop = threading.Event()
 
+    def finish(self):
+        print("finishcall")
+        self.stop.set()
+
     def run(self):
-        wait = 1
+        wait = 2
         while True:
-            process = StartProc(self.args, self.processes)
+            process = StartProc(self.args)
             logging.warning("Process " + self.args[1] + " terminated")
             logging.info(" next try in "+str(wait)+" seconds\n")
             ServerRequest.FailReport(self.args[1], self.global_data)
             time.sleep(wait)
             wait *= 2
-            if (wait == 32):
+            if (wait == 16):
                 ServerRequest.LastReport(self.args[1], self.global_data)
                 logging.warning("Process " + self.args[1] + " is unable to be launched on this Node")
-                finish()
-
-    def finish(self):
-        self.stop.set()
+                self.finish()
+                break
 
 
-def StartProc(args, working_on):
+
+def StartProc(args):
     try:
         stdout_file = open("stdout_file", 'w')
         stderr_file = open("stderr_file", 'w')
         proc = subprocess.Popen(
-            args[0], stdin=subprocess.PIPE, stdout=stdout_file,
+            args[0].split(), stdin=subprocess.PIPE, stdout=stdout_file,
             stderr=stderr_file)
-        working_on[args[1]] = proc
         proc.wait()
     finally:
         stderr_file.close()
@@ -73,9 +74,21 @@ def DoAction(action, processes, global_data):
     if action["action"] == "exec":
         for i in action['task']:
             if not i[1] in processes:
-                t = ProcessWorker(i, processes, global_data)
+                t = ProcessWorker(i, global_data)
+                processes[i[1]] = t
                 t.start()
+        for i in processes:
+            print(i)
+            mark = True
+            for j in range(0, len(action['task'])):
+                if action['task'][j][1] == i:
+                    action['task'][j][1]
+                    mark = False
+                    break
+            if (mark):
+                processes[i].finish()
         return 0
+
 
 
 class ServerData:
@@ -93,7 +106,8 @@ def main():
     action = ServerRequest.Register(server_data)
     while True:
         DoAction(action, processes, server_data)
-        time.sleep(RandomTimeout(40))
+        print(processes)
+        time.sleep(RandomTimeout(30))
         action = ServerRequest.CheckOut(server_data)
 
 

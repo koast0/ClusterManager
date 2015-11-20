@@ -13,38 +13,26 @@ from SafeShutdown import MakeSaflyShutdown
 import DatabaseLogic as db
 
 
-class Node:
-
-    def __init__(self, hostname, process):
-        self.hostname = hostname
-        self.process = process
-        self.status = 0
-        self.id = uuid.uuid4()
-
-
 class IndexPostAnswer:
 
-    def __init__(self, body, config, nodes):
+    def __init__(self, body):
         self.body = body
         self.arguments = dict()
         self.response = dict()
-        self.config = config
-        self.nodes = nodes
         self.output = ''
 
     def Answerer(self):
 
         def AnswerReady(self):
-            for i in self.config:
-                if (i.hostname == name and i.status == 0):
+            for i in db.GetTasks(name):
+                if (i[0] == name):
                     if not ('task' in self.response):
-                        self.response['task'] = [(i.process, str(i.id))]
+                        self.response['task'] = [(i[1], i[2])]
                     else:
-                        self.response['task'].append((i.process, str(i.id)))
+                        self.response['task'].append((i[1], i[2]))
                     self.response['action'] = "exec"
-                    logging.info("task " + str(i.id) + "started on " + name)
-                    db.ProcUpdate(name, "RUNNING", str(i.id))
-                    i.status = 1
+                    logging.info("task " + i[2] + "started on " + name)
+                    db.ProcUpdate(name, "RUNNING", str(i[2]))
             if not ('task' in self.response):
                 self.response['action'] = "wait"
 
@@ -59,10 +47,21 @@ class IndexPostAnswer:
             logging.info("Process " + proc_id + " on " + name + " failed\n")
 
         def AnswerOk(self):
-            self.response['action'] = "wait"
+            for i in db.GetTasks(name):
+                if (i[0] == name):
+                    if not ('task' in self.response):
+                        self.response['task'] = [(i[1], i[2])]
+                    else:
+                        self.response['task'].append((i[1], i[2]))
+                    self.response['action'] = "exec"
+                    print(db.GetProcStatus(i[2]))
+                    if (db.GetProcStatus(i[2]) != "FAIL" and db.GetProcStatus(i[2])!= "UNABLE_TO_LAUNCH"):
+                        db.ProcUpdate(name, "RUNNING", str(i[2]))
+            if not ('task' in self.response):
+                self.response['action'] = "wait"
             logging.info("Node " + name + " checked out")
 
-        print(self.body)
+        
         if self.body:
             try:
                 json_data = json.loads(self.body.decode("utf-8"))
@@ -87,19 +86,19 @@ class IndexPostAnswer:
 
         if (status == "OK"):
             AnswerOk(self)
-
+        print(self.body)
+        print(self.response)
         self.output = json.dumps(self.response)
 
 
 class IndexHandler(tornado.web.RequestHandler):
 
-    def initialize(self, config, nodes):
-        self.config = config
-        self.nodes = nodes
+    def initialize(self):
+        pass
 
     def post(self):
         output_class = IndexPostAnswer(
-            self.request.body, self.config, self.nodes)
+            self.request.body)
         output_class.Answerer()
         output = output_class.output
         self.finish(output)
@@ -107,31 +106,27 @@ class IndexHandler(tornado.web.RequestHandler):
 
 class Application(tornado.web.Application):
 
-    def __init__(self, config, nodes):
+    def __init__(self):
         self.queue = queue.Queue()
-        self.config = config
-        self.nodes = nodes
         handlers = [
-            (r"/", IndexHandler, dict(config=self.config, nodes=self.nodes)),
+            (r"/", IndexHandler),
         ]
         tornado.web.Application.__init__(self, handlers)
 
 
-def GetConfigData(nodes):
+def GetConfigData():
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', "--config", type=str, default='')
     config_file = parser.parse_args().config
     try:
         config_data = open(config_file).readlines()
-        for i in config_data:
-            nodes.append(Node(i.split()[0], i.split()[1:]))
+        db.AddTaskTableIntoDB(config_data) 
     except:
-        logging.warning("Wrong config file")
-        exit(1)
+        logging.info("Wrong config file. Starting with old data")
 
 
-def StartTornado(port, config, nodes):
-    application = Application(config, nodes)
+def StartTornado(port):
+    application = Application()
     server = tornado.httpserver.HTTPServer(application)
     server.listen(port)
     MakeSaflyShutdown(server)
@@ -141,10 +136,8 @@ def StartTornado(port, config, nodes):
 def main():
     logging.basicConfig(filename='master.log', level=logging.INFO)
     db.CreateDB()
-    config = []
-    nodes = dict()
-    GetConfigData(config)
-    StartTornado(8000, config, nodes)
+    GetConfigData()
+    StartTornado(8000)
 
 if __name__ == "__main__":
     main()
