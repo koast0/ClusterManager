@@ -26,11 +26,11 @@ python3 master.py -c [--config] (файл конфига)
 ### Agent: ###
 ```
 #!bash
-python3 agent.py -ip[--address] (ip сервера) -p[--port] (порт сервера) 
+python3 agent.py -ip[--address] (адрес сервера) 
 -n[--name] (имя ноды) 
 
 ```
-### Формат конфиг фала ###
+### Формат конфиг файла ###
 
 ```
 #!bash
