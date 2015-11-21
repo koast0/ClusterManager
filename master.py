@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import socket
 import json
@@ -93,9 +94,6 @@ class IndexPostAnswer:
 
 class IndexHandler(tornado.web.RequestHandler):
 
-    def initialize(self):
-        pass
-
     def post(self):
         output_class = IndexPostAnswer(
             self.request.body)
@@ -109,7 +107,7 @@ class Application(tornado.web.Application):
     def __init__(self):
         self.queue = queue.Queue()
         handlers = [
-            (r"/", IndexHandler),
+            (r"/", IndexHandler)
         ]
         tornado.web.Application.__init__(self, handlers)
 
