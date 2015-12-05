@@ -42,6 +42,10 @@ class ProcessWorker(threading.Thread):
         wait = 2
         while True:
             process = StartProc(self.args)
+            if (process.returncode == 0):
+                ServerRequest.SuccessReport(self.args[1], self.global_data)
+                self.finish()
+                return 0
             logging.warning("Process " + self.args[1] + " terminated")
             logging.info(" next try in "+str(wait)+" seconds\n")
             ServerRequest.FailReport(self.args[1], self.global_data)

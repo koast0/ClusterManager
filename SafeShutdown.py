@@ -4,9 +4,11 @@ from tornado import web, ioloop, options, httpserver
 _SHUTDOWN_TIMEOUT = 5
 
 
-def MakeSaflyShutdown(server):
+def MakeSaflyShutdown(server, db, status_checker):
     io_loop = server.io_loop or ioloop.IOLoop.instance()
     def stop_handler(*args, **keywords):
+        db.Finish()
+        status_checker.finish()
         def shutdown():
             server.stop()
             deadline = time.time() + _SHUTDOWN_TIMEOUT

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import argparse
+import HTML
 import socket
 import json
 import threading
 import queue
+from time import sleep
 from tornado import httpserver, options
 import tornado.web
 import uuid
@@ -11,7 +13,10 @@ import tornado.ioloop
 import tornado.web
 import logging
 from SafeShutdown import MakeSaflyShutdown
-import DatabaseLogic as db
+from DatabaseLogic import SQL
+
+def GetDatetimeObj (t):
+    return(datetime.strptime(t, "%Y-%m-%d %H:%M:%S.%f"))
 
 
 class IndexPostAnswer:
@@ -46,6 +51,16 @@ class IndexPostAnswer:
             db.ProcUpdate(name, "FAIL", proc_id)
             self.response['action'] = "wait"
             logging.info("Process " + proc_id + " on " + name + " failed\n")
+
+        def AnswerFail(self):
+            try:
+                proc_id = self.arguments['proc_id']
+            except:
+                logging.warning("Some nessesary json object are not available")
+                return
+            db.ProcUpdate(name, "SUCCESS", proc_id)
+            self.response['action'] = "wait"
+            logging.info("Process " + proc_id + " on " + name + " finished with return code 0\n")
 
         def AnswerOk(self):
             for i in db.GetTasks(name):
@@ -87,6 +102,8 @@ class IndexPostAnswer:
 
         if (status == "OK"):
             AnswerOk(self)
+        if (status == "SUCCESS"):
+            AnswerSuccess(self)
         print(self.body)
         print(self.response)
         self.output = json.dumps(self.response)
@@ -102,12 +119,35 @@ class IndexHandler(tornado.web.RequestHandler):
         self.finish(output)
 
 
+class TaskHandler(tornado.web.RequestHandler):
+    def get(self):
+        data = db.GetAllTasks()
+        data = HTML.table(data)
+        self.finish(data)
+
+
+class ProcHandler(tornado.web.RequestHandler):
+    def get(self):
+        data = db.GetAllProc()
+        data = HTML.table(data)
+        self.finish(data)
+
+class NodesHandler(tornado.web.RequestHandler):
+    def get(self):
+        data = db.GetAllNodes()
+        data = HTML.table(data)
+        self.finish(data)
+
+
 class Application(tornado.web.Application):
 
     def __init__(self):
         self.queue = queue.Queue()
         handlers = [
-            (r"/", IndexHandler)
+            (r"/", IndexHandler), 
+            (r"/tasks", TaskHandler),
+            (r"/proc", ProcHandler),
+            (r"/nodes", NodesHandler)
         ]
         tornado.web.Application.__init__(self, handlers)
 
@@ -122,20 +162,37 @@ def GetConfigData():
     except:
         logging.info("Wrong config file. Starting with old data")
 
-
-def StartTornado(port):
+def StartTornado(port, StatusChecker):
     application = Application()
     server = tornado.httpserver.HTTPServer(application)
     server.listen(port)
-    MakeSaflyShutdown(server)
+    MakeSaflyShutdown(server, db, StatusChecker)
     tornado.ioloop.IOLoop.instance().start()
+
+class StatusChecker(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.stop = threading.Event()
+
+    def run(self):
+        while True:
+            sleep(1)
+
+    def finish(self):
+        self.stop.set()
+            
 
 
 def main():
     logging.basicConfig(filename='master.log', level=logging.INFO)
+    logging.info("Server started")
     db.CreateDB()
     GetConfigData()
-    StartTornado(8000)
+    t = StatusChecker()
+    t.start()
+    StartTornado(8000, t)
+
+db = SQL()
 
 if __name__ == "__main__":
     main()
