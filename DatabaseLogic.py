@@ -5,16 +5,22 @@ from datetime import datetime
 
 class SQL: 
     def __init__ (self):
-        self.conn = db.connect("agent.db")
+        self.conn = db.connect("agent.db", check_same_thread=False)
         self.cursor = self.conn.cursor()
 
     def ProcUpdate(self, name, status, process):
         inserts = (name, status, process)
         current = 0
-        self.cursor.execute('UPDATE processes SET hostname=?, status=? WHERE uuid=?', inserts)
+        self.cursor.execute('UPDATE processes SET hostname= ?,status=? WHERE uuid=?', inserts)
         self.cursor.execute('SELECT changes()')
         if self.cursor.fetchone()[0]== 0:
             self.cursor.execute('INSERT INTO processes VALUES  (?, ?, ?)', inserts)
+        self.conn.commit()
+
+    def ProcNodeUpdate(self, status, name):
+        inserts = (status, name, "RUNNING")
+        current = 0
+        self.cursor.execute('UPDATE processes SET status=? WHERE hostname=? and status=?', inserts)
         self.conn.commit()
 
     def GetProcStatus(self, uuid):
@@ -64,7 +70,6 @@ class SQL:
             self.cursor.execute('''CREATE TABLE tasks
             (hostname TEXT, task TEXT, uuid TEXT)''')
             self.conn.commit()
-            self.conn.close()
         except db.OperationalError:
             logging.warning("Unable to self.connect to database")
         try:

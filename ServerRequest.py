@@ -32,13 +32,13 @@ def CheckOut(server_data):
 
 def FailReport(proc_id, global_data):
     json_data = JSONrequest(
-        status="SUCCESS", name=global_data.name, proc_id=proc_id)
+        status="FAIL", name=global_data.name, proc_id=proc_id)
     RequestToServer(global_data, json_data)
 
 
 def SuccessReport(proc_id, global_data):
     json_data = JSONrequest(
-        status="FAIL", name=global_data.name, proc_id=proc_id)
+        status="SUCCESS", name=global_data.name, proc_id=proc_id)
     RequestToServer(global_data, json_data)
 
 

@@ -14,13 +14,13 @@ def RandomTimeout(time):
     return (time + random()*time)
 
 
-
 def ParceInput():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-ip', "--address", type=str, default='http://localhost:8000')
+    parser.add_argument(
+        '-ip', "--address", type=str, default='http://localhost:8000')
     parser.add_argument('-n', "--name", type=str, default='Node0')
     address = parser.parse_args().address
-    url = urlparse(address, scheme = 'http')
+    url = urlparse(address, scheme='http')
     address = urlunparse(url)
     name = parser.parse_args().name
     return (address, name)
@@ -35,7 +35,6 @@ class ProcessWorker(threading.Thread):
         self.stop = threading.Event()
 
     def finish(self):
-        print("finishcall")
         self.stop.set()
 
     def run(self):
@@ -53,10 +52,12 @@ class ProcessWorker(threading.Thread):
             wait *= 2
             if (wait == 16):
                 ServerRequest.LastReport(self.args[1], self.global_data)
-                logging.warning("Process " + self.args[1] + " is unable to be launched on this Node")
+                logging.warning(
+                    "Process " + self.args[1] + 
+                    " is unable to be launched on this Node")
                 self.finish()
                 break
-
+        return 0
 
 
 def StartProc(args):
@@ -93,7 +94,6 @@ def DoAction(action, processes, global_data):
             if (mark):
                 processes[i].finish()
         return 0
-
 
 
 class ServerData:

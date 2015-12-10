@@ -7,6 +7,7 @@ import threading
 import queue
 from time import sleep
 from tornado import httpserver, options
+from datetime import *
 import tornado.web
 import uuid
 import tornado.ioloop
@@ -52,7 +53,7 @@ class IndexPostAnswer:
             self.response['action'] = "wait"
             logging.info("Process " + proc_id + " on " + name + " failed\n")
 
-        def AnswerFail(self):
+        def AnswerSuccess(self):
             try:
                 proc_id = self.arguments['proc_id']
             except:
@@ -102,8 +103,10 @@ class IndexPostAnswer:
 
         if (status == "OK"):
             AnswerOk(self)
+
         if (status == "SUCCESS"):
             AnswerSuccess(self)
+
         print(self.body)
         print(self.response)
         self.output = json.dumps(self.response)
@@ -176,8 +179,18 @@ class StatusChecker(threading.Thread):
 
     def run(self):
         while True:
-            sleep(1)
-
+            data = db.GetAllNodes()
+            for i in range(0, len(data)):
+                
+                last_visit = GetDatetimeObj(data[i][1])
+                now = datetime.now()
+                diffrence = timedelta.total_seconds(now - last_visit)
+                if (diffrence > 120) :
+                    logging.info("node " + data[i][0]+ " is offline")
+                    db.ProcNodeUpdate(status="FAIL", name = data[i][0])
+            if self.stop.is_set():
+                    return 0
+            sleep(5)
     def finish(self):
         self.stop.set()
             
@@ -188,7 +201,7 @@ def main():
     logging.info("Server started")
     db.CreateDB()
     GetConfigData()
-    t = StatusChecker()
+    t = StatusChecker(  )
     t.start()
     StartTornado(8000, t)
 
