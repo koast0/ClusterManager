@@ -1,14 +1,15 @@
 import time, signal
 from tornado import web, ioloop, options, httpserver
 
-_SHUTDOWN_TIMEOUT = 10
+_SHUTDOWN_TIMEOUT = 15
 
 
-def MakeSaflyShutdown(server, db, worker):
+def MakeSaflyShutdown(server, db, worker1, worker2):
     io_loop = server.io_loop or ioloop.IOLoop.instance()
     def stop_handler(*args, **keywords):
         print("SHUTDOWNING SERVER")
-        worker.finish()
+        worker1.finish()
+        worker2.finish()
         def shutdown():
             server.stop()
             deadline = time.time() + _SHUTDOWN_TIMEOUT

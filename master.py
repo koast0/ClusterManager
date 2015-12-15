@@ -165,11 +165,11 @@ def GetConfigData():
     except:
         logging.info("Wrong config file. Starting with old data")
 
-def StartTornado(port, StatusChecker):
+def StartTornado(port, StatusChecker, NodeRemaper):
     application = Application()
     server = tornado.httpserver.HTTPServer(application)
     server.listen(port)
-    MakeSaflyShutdown(server, db, StatusChecker)
+    MakeSaflyShutdown(server, db, StatusChecker, NodeRemaper)
     tornado.ioloop.IOLoop.instance().start()
 
 def CheckProcesses():
@@ -178,9 +178,9 @@ def CheckProcesses():
         last_visit = GetDatetimeObj(data[i][1])
         now = datetime.now()
         diffrence = timedelta.total_seconds(now - last_visit)
-        if (diffrence > 120) :
+        if (diffrence > 120):
             logging.info("node " + data[i][0]+ " is offline")
-            db.ProcNodeUpdate(status="UNABLE_TO_LAUNCH", name = data[i][0])
+            db.ProcNodeUpdate(status="OLD SESSION PROCESS", name = data[i][0])
 
 class StatusChecker(threading.Thread):
     def __init__(self):
@@ -188,6 +188,8 @@ class StatusChecker(threading.Thread):
         self.stop = threading.Event()
 
     def run(self):
+        if self.stop.is_set():
+            return 0
         while True:
             data = db.GetAllNodes()
             for i in range(0, len(data)):
@@ -199,7 +201,7 @@ class StatusChecker(threading.Thread):
                     db.ProcNodeUpdate(status="UNABLE_TO_LAUNCH", name = data[i][0])
             if self.stop.is_set():
                     return 0
-            sleep(5)
+            sleep(10)
     def finish(self):
         self.stop.set()
 
@@ -208,17 +210,40 @@ class NodeRemaper(threading.Thread):
         threading.Thread.__init__(self)
         self.stop = threading.Event()
         self.bad_nodes = dict()
+        self.node_load = dict()
     def run(self):
         while True:
-            data = db.GetAllFailedProc()
-            for i in data:
-                if not(i[0] in bad_nodes):
-                    bad_nodes[i[0]]= [i[1]]
-                else:
-                    bad_nodes[i[0]].append(i[1])
-
             if self.stop.is_set():
                     return 0
+            data = db.GetAllFailedProc()
+            for i in data:
+                if not(i[0] in self.bad_nodes):
+                    self.bad_nodes[i[0]]= [i[1]]
+                else:
+                    self.bad_nodes[i[0]].append(i[1])
+            proclist = db.GetAllProc()
+            data = db.GetAllNodes()
+            node_load =dict()
+            for i in range(0, len(data)):
+                last_visit = GetDatetimeObj(data[i][1])
+                now = datetime.now()
+                diffrence = timedelta.total_seconds(now - last_visit)
+                if diffrence < 120:
+                    node_load[data[i][0]] = 0;
+            for i in proclist:
+                if i[1]=="RUNNING" :
+                    node_load[i[0]] +=1
+            values = sorted(node_load, key = lambda i: i[1])
+            # for i in data:
+            #     current = 0
+            #     while current!=len(values):
+            #         if values[i[0]] in bad_nodes:
+            #             if not(values[i[0]] in bad_nodes[i[1]]:
+            #                 db.TaskUpdate(i[1], values[i[0]])
+            #         else:
+
+
+            
             sleep(10)
     def finish(self):
         self.stop.set()
@@ -232,7 +257,9 @@ def main():
     GetConfigData()
     t = StatusChecker()
     t.start()
-    StartTornado(8000, t)
+    q = NodeRemaper()
+    q.start()
+    StartTornado(8000, t, q)
 
 db = SQL()
 

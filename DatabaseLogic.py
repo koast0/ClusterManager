@@ -30,10 +30,18 @@ class SQL:
         self.conn.commit()
 
     @MakeOneThreaded
+    def TaskUpdate(self, uuid, name):
+        inserts = (name, uuid)
+        self.cursor.execute('UPDATE tasks SET hostname= ? WHERE uuid=?', inserts)
+        self.conn.commit()
+
+    @MakeOneThreaded
     def ProcNodeUpdate(self, status, name):
         inserts = (status, name, "RUNNING")
-        current = 0
         self.cursor.execute('UPDATE processes SET status=? WHERE hostname=? and status=?', inserts)
+        inserts = (status, name, "UNABLE_TO_LAUNCH")
+        self.cursor.execute('UPDATE processes SET status=? WHERE hostname=? and status=?', inserts)
+
         self.conn.commit()
 
     @MakeOneThreaded
