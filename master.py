@@ -19,7 +19,6 @@ from DatabaseLogic import SQL
 def GetDatetimeObj (t):
     return(datetime.strptime(t, "%Y-%m-%d %H:%M:%S.%f"))
 
-
 class IndexPostAnswer:
 
     def __init__(self, body):
@@ -72,7 +71,8 @@ class IndexPostAnswer:
                         self.response['task'].append((i[1], i[2]))
                     self.response['action'] = "exec"
                     print(db.GetProcStatus(i[2]))
-                    if (db.GetProcStatus(i[2]) != "FAIL" and db.GetProcStatus(i[2])!= "UNABLE_TO_LAUNCH"):
+                    if (db.GetProcStatus(i[2]) != "FAIL" and db.GetProcStatus(i[2])!= "UNABLE_TO_LAUNCH" and 
+                        db.GetProcStatus(i[2]) != "SUCCESS"):
                         db.ProcUpdate(name, "RUNNING", str(i[2]))
             if not ('task' in self.response):
                 self.response['action'] = "wait"
@@ -156,10 +156,10 @@ class Application(tornado.web.Application):
 
 
 def GetConfigData():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', "--config", type=str, default='')
-    config_file = parser.parse_args().config
     try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('-c', "--config", type=str, default='')
+        config_file = parser.parse_args().config
         config_data = open(config_file).readlines()
         db.AddTaskTableIntoDB(config_data) 
     except:
@@ -172,6 +172,16 @@ def StartTornado(port, StatusChecker):
     MakeSaflyShutdown(server, db, StatusChecker)
     tornado.ioloop.IOLoop.instance().start()
 
+def CheckProcesses():
+    data = db.GetAllNodes()
+    for i in range(0, len(data)):
+        last_visit = GetDatetimeObj(data[i][1])
+        now = datetime.now()
+        diffrence = timedelta.total_seconds(now - last_visit)
+        if (diffrence > 120) :
+            logging.info("node " + data[i][0]+ " is offline")
+            db.ProcNodeUpdate(status="UNABLE_TO_LAUNCH", name = data[i][0])
+
 class StatusChecker(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -181,27 +191,46 @@ class StatusChecker(threading.Thread):
         while True:
             data = db.GetAllNodes()
             for i in range(0, len(data)):
-                
                 last_visit = GetDatetimeObj(data[i][1])
                 now = datetime.now()
                 diffrence = timedelta.total_seconds(now - last_visit)
                 if (diffrence > 120) :
                     logging.info("node " + data[i][0]+ " is offline")
-                    db.ProcNodeUpdate(status="FAIL", name = data[i][0])
+                    db.ProcNodeUpdate(status="UNABLE_TO_LAUNCH", name = data[i][0])
             if self.stop.is_set():
                     return 0
             sleep(5)
     def finish(self):
         self.stop.set()
-            
+
+class NodeRemaper(threading.Thread):           
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.stop = threading.Event()
+        self.bad_nodes = dict()
+    def run(self):
+        while True:
+            data = db.GetAllFailedProc()
+            for i in data:
+                if not(i[0] in bad_nodes):
+                    bad_nodes[i[0]]= [i[1]]
+                else:
+                    bad_nodes[i[0]].append(i[1])
+
+            if self.stop.is_set():
+                    return 0
+            sleep(10)
+    def finish(self):
+        self.stop.set()
 
 
 def main():
     logging.basicConfig(filename='master.log', level=logging.INFO)
     logging.info("Server started")
     db.CreateDB()
+    CheckProcesses()
     GetConfigData()
-    t = StatusChecker(  )
+    t = StatusChecker()
     t.start()
     StartTornado(8000, t)
 
