@@ -42,13 +42,13 @@ class IndexPostAnswer:
             if not ('task' in self.response):
                 self.response['action'] = "wait"
 
-        def AnswerFail(self):
+        def AnswerFail(self, status):
             try:
                 proc_id = self.arguments['proc_id']
             except:
                 logging.warning("Some nessesary json object are not available")
                 return
-            db.ProcUpdate(name, "FAIL", proc_id)
+            db.ProcUpdate(name, status, proc_id)
             self.response['action'] = "wait"
             logging.info("Process " + proc_id + " on " + name + " failed\n")
 
@@ -99,7 +99,7 @@ class IndexPostAnswer:
             AnswerReady(self)
 
         if (status == "FAIL" or status == "UNABLE_TO_LAUNCH"):
-            AnswerFail(self)
+            AnswerFail(self, status)
 
         if (status == "OK"):
             AnswerOk(self)
@@ -186,6 +186,7 @@ class StatusChecker(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.stop = threading.Event()
+        self.offline_nodes = set()
 
     def run(self):
         if self.stop.is_set():
@@ -196,8 +197,7 @@ class StatusChecker(threading.Thread):
                 last_visit = GetDatetimeObj(data[i][1])
                 now = datetime.now()
                 diffrence = timedelta.total_seconds(now - last_visit)
-                if (diffrence > 120) :
-                    logging.info("node " + data[i][0]+ " is offline")
+                if (diffrence > 120):
                     db.ProcNodeUpdate(status="UNABLE_TO_LAUNCH", name = data[i][0])
             if self.stop.is_set():
                     return 0
@@ -222,28 +222,35 @@ class NodeRemaper(threading.Thread):
                 else:
                     self.bad_nodes[i[0]].append(i[1])
             proclist = db.GetAllProc()
-            data = db.GetAllNodes()
+            nodes = db.GetAllNodes()
             node_load =dict()
-            for i in range(0, len(data)):
-                last_visit = GetDatetimeObj(data[i][1])
+            for i in range(0, len(nodes)):
+                last_visit = GetDatetimeObj(nodes[i][1])
                 now = datetime.now()
                 diffrence = timedelta.total_seconds(now - last_visit)
                 if diffrence < 120:
-                    node_load[data[i][0]] = 0;
+                    node_load[nodes[i][0]] = 0;
             for i in proclist:
                 if i[1]=="RUNNING" :
-                    node_load[i[0]] +=1
-            values = sorted(node_load, key = lambda i: i[1])
-            # for i in data:
-            #     current = 0
-            #     while current!=len(values):
-            #         if values[i[0]] in bad_nodes:
-            #             if not(values[i[0]] in bad_nodes[i[1]]:
-            #                 db.TaskUpdate(i[1], values[i[0]])
-            #         else:
-
-
-            
+                    if (i[0] in node_load):
+                        node_load[i[0]] +=1
+            values = sorted(node_load.items(), key = lambda i: i[1])
+            # values = [(hostname, processes number), ...]
+            print (values)
+            for i in data:
+                # i = (id, hostname)
+                current = 0
+                while current!=len(values):
+                    if i[0] in self.bad_nodes:
+                        if not(values[current][0] in self.bad_nodes[i[0]]):
+                            db.TaskUpdate(i[0], values[current][0])
+                            db.ProcUpdate(values[current][0], "PREPARING TO RUN", i[0])
+                            return 0;
+                        else: current+=1
+                    else:
+                        db.TaskUpdate(i[0], values[current][0])
+                        db.ProcUpdate(values[current][0], "PREPARING TO RUN", i[0])
+                        return 0;
             sleep(10)
     def finish(self):
         self.stop.set()

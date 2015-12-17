@@ -41,6 +41,14 @@ class ProcessWorker(threading.Thread):
         wait = 2
         while True:
             process = StartProc(self.args)
+            if process == None:
+                ServerRequest.LastReport(self.args[1], self.global_data)
+                logging.warning(
+                    "Process " + self.args[1] + 
+                    " can't be launched on this Node")
+                self.finish()
+                return 0
+
             if (process.returncode == 0):
                 ServerRequest.SuccessReport(self.args[1], self.global_data)
                 self.finish()
@@ -54,7 +62,7 @@ class ProcessWorker(threading.Thread):
                 ServerRequest.LastReport(self.args[1], self.global_data)
                 logging.warning(
                     "Process " + self.args[1] + 
-                    " is unable to be launched on this Node")
+                    " can't be launched on this Node")
                 self.finish()
                 break
         return 0
@@ -64,10 +72,13 @@ def StartProc(args):
     try:
         stdout_file = open("stdout_file", 'w')
         stderr_file = open("stderr_file", 'w')
-        proc = subprocess.Popen(
-            args[0].split(), stdin=subprocess.PIPE, stdout=stdout_file,
-            stderr=stderr_file)
-        proc.wait()
+        try:
+            proc = subprocess.Popen(
+                args[0].split(), stdin=subprocess.PIPE, stdout=stdout_file,
+                stderr=stderr_file)
+            proc.wait()
+        except:
+            return None
     finally:
         stderr_file.close()
         stdout_file.close()

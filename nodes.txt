@@ -1,3 +1,4 @@
 Node0 vim
 Node0 ls -l
 Node1 vim
+Node0 DOSMTH
