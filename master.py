@@ -69,8 +69,7 @@ class IndexPostAnswer:
                         self.response['task'] = [(i[1], i[2])]
                     else:
                         self.response['task'].append((i[1], i[2]))
-                    self.response['action'] = "exec"
-                    print(db.GetProcStatus(i[2]))
+                    self.response['action'] = "exec"    
                     if (db.GetProcStatus(i[2]) != "FAIL" and db.GetProcStatus(i[2])!= "UNABLE_TO_LAUNCH" and 
                         db.GetProcStatus(i[2]) != "SUCCESS"):
                         db.ProcUpdate(name, "RUNNING", str(i[2]))
@@ -106,9 +105,6 @@ class IndexPostAnswer:
 
         if (status == "SUCCESS"):
             AnswerSuccess(self)
-
-        print(self.body)
-        print(self.response)
         self.output = json.dumps(self.response)
 
 
@@ -120,26 +116,40 @@ class IndexHandler(tornado.web.RequestHandler):
         output_class.Answerer()
         output = output_class.output
         self.finish(output)
-
+        
+class CommandHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render("command.html")
+    def post(self):
+        command = str(self.request.arguments['command'][0])[2:-1]
+        try:
+            data = HTML.table(db.Command(command))
+            self.write("<p><h1>Result</h1></p>"+data)
+            self.render("command.html")
+        except:
+            self.write("<p><h1>Error</h1></p>")
+            self.render("command.html")
 
 class TaskHandler(tornado.web.RequestHandler):
     def get(self):
         data = db.GetAllTasks()
         data = HTML.table(data)
-        self.finish(data)
-
+        self.write(data)
+        self.finish("""<p><a href="/run">Back to main</a></p>""")
 
 class ProcHandler(tornado.web.RequestHandler):
     def get(self):
         data = db.GetAllProc()
         data = HTML.table(data)
-        self.finish(data)
+        self.write(data)
+        self.finish("""<p><a href="/run">Back to main</a></p>""")
 
 class NodesHandler(tornado.web.RequestHandler):
     def get(self):
         data = db.GetAllNodes()
         data = HTML.table(data)
-        self.finish(data)
+        self.write(data)
+        self.finish("""<p><a href="/run">Back to main</a></p>""")
 
 
 class Application(tornado.web.Application):
@@ -150,7 +160,8 @@ class Application(tornado.web.Application):
             (r"/", IndexHandler), 
             (r"/tasks", TaskHandler),
             (r"/proc", ProcHandler),
-            (r"/nodes", NodesHandler)
+            (r"/nodes", NodesHandler),
+            (r"/run", CommandHandler)
         ]
         tornado.web.Application.__init__(self, handlers)
 
@@ -179,7 +190,6 @@ def CheckProcesses():
         now = datetime.now()
         diffrence = timedelta.total_seconds(now - last_visit)
         if (diffrence > 120):
-            logging.info("node " + data[i][0]+ " is offline")
             db.ProcNodeUpdate(status="OLD SESSION PROCESS", name = data[i][0])
 
 class StatusChecker(threading.Thread):
@@ -210,7 +220,6 @@ class NodeRemaper(threading.Thread):
         threading.Thread.__init__(self)
         self.stop = threading.Event()
         self.bad_nodes = dict()
-        self.node_load = dict()
     def run(self):
         while True:
             if self.stop.is_set():
@@ -236,7 +245,7 @@ class NodeRemaper(threading.Thread):
                         node_load[i[0]] +=1
             values = sorted(node_load.items(), key = lambda i: i[1])
             # values = [(hostname, processes number), ...]
-            print (values)
+            # print (values)
             for i in data:
                 # i = (id, hostname)
                 current = 0
@@ -245,12 +254,14 @@ class NodeRemaper(threading.Thread):
                         if not(values[current][0] in self.bad_nodes[i[0]]):
                             db.TaskUpdate(i[0], values[current][0])
                             db.ProcUpdate(values[current][0], "PREPARING TO RUN", i[0])
-                            return 0;
+                            logging.info("Process "+ i[0]+ " migrated to " + values[current][0])
+                            break
                         else: current+=1
                     else:
                         db.TaskUpdate(i[0], values[current][0])
                         db.ProcUpdate(values[current][0], "PREPARING TO RUN", i[0])
-                        return 0;
+                        logging.info("Process " + i[0] + " migrated to " + values[current][0])
+                        break
             sleep(10)
     def finish(self):
         self.stop.set()

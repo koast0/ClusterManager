@@ -7,7 +7,7 @@ _SHUTDOWN_TIMEOUT = 15
 def MakeSaflyShutdown(server, db, worker1, worker2):
     io_loop = server.io_loop or ioloop.IOLoop.instance()
     def stop_handler(*args, **keywords):
-        print(" SHUTDOWNING SERVER... It can take some time")
+        print(" SHUTDOWNING SERVER... It may take some time")
         worker1.finish()
         worker2.finish()
         def shutdown():

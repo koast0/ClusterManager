@@ -37,11 +37,8 @@ class SQL:
 
     @MakeOneThreaded
     def ProcNodeUpdate(self, status, name):
-        inserts = (status, name, "RUNNING")
-        self.cursor.execute('UPDATE processes SET status=? WHERE hostname=? and status=?', inserts)
-        inserts = (status, name, "UNABLE_TO_LAUNCH")
-        self.cursor.execute('UPDATE processes SET status=? WHERE hostname=? and status=?', inserts)
-
+        inserts = (status, name, "SUCCESS", "OLD SESSION PROCESS")
+        self.cursor.execute('UPDATE processes SET status=? WHERE hostname=? and status NOT IN (?, ?)', inserts)
         self.conn.commit()
 
     @MakeOneThreaded
@@ -84,6 +81,13 @@ class SQL:
     @MakeOneThreaded
     def GetAllNodes(self):
         self.cursor.execute('SELECT * FROM nodes')
+        data = self.cursor.fetchall()
+        self.conn.commit()
+        return data;
+
+    @MakeOneThreaded
+    def Command(self, command):
+        self.cursor.execute(command)
         data = self.cursor.fetchall()
         self.conn.commit()
         return data;
