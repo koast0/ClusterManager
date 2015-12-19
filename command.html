@@ -1,0 +1,19 @@
+<html> 
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/> 
+        <title>Tornado Application</title>
+    </head>
+    <body>
+        <p><h1>Enter SQL command</h1></p>
+        <p><a href="/tasks">tasks</a></p>
+        <p><a href="/proc">processes</a></p>
+        <p><a href="/nodes">nodes</a></p>
+
+
+        <form enctype="multipart/form-data" action="/run" method="post">
+            Command: <input type="text" name="command" size="100" /><br />
+            <br />
+            <input type="submit" value="Send" />
+        </form>
+    </body>
+</html>
